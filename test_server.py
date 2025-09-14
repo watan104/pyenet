@@ -1,66 +1,53 @@
 import enet
 
-SHUTDOWN_MSG = "SHUTDOWN"
+SHUTDOWN_MSG = b"SHUTDOWN"
 
-host = enet.Host(enet.Address(b"localhost", 54301), 10, 0, 0, 0)
-host.checksum = enet.ENET_CRC32
-connect_count = 0
-run = True
-shutdown_recv = False
-while run:
-    # Wait 1 second for an event
-    event = host.service(1000)
-    if event.type == enet.EVENT_TYPE_CONNECT:
-        print("%s: CONNECT" % event.peer.address)
-        connect_count += 1
-    elif event.type == enet.EVENT_TYPE_DISCONNECT:
-        print("%s: DISCONNECT" % event.peer.address)
-        connect_count -= 1
-        if connect_count <= 0 and shutdown_recv:
-            run = False
-    elif event.type == enet.EVENT_TYPE_RECEIVE:
-        print("%s: IN:  %r" % (event.peer.address, event.packet.data))
-        msg = event.packet.data
-        if event.peer.send(0, enet.Packet(msg)) < 0:
-            print("%s: Error sending echo packet!" % event.peer.address)
-        else:
-            print("%s: OUT: %r" % (event.peer.address, msg))
-        if event.packet.data == b"SHUTDOWN":
-            shutdown_recv = True
+def main():
+    host = enet.Host(
+        enet.Address(b"localhost", 17091),
+        10,
+        0,
+        0,
+        0
+    )
+    host.checksum = enet.ENET_CRC32
 
-# Part of the test to do with intercept callback and socket.send
+    connect_count = 0
+    shutdown_received = False
+    run = True
 
-connect_count = 0
-run = True
-shutdown_recv = False
+    def intercept_callback(address, data):
+        if data == b"\xff\xff\xff\xffgetstatus\x00":
+            host.socket.send(address, b"\xff\xff\xff\xffstatusResponse\n")
+
+    host.intercept = intercept_callback
+
+    print("Server started on 0.0.0.0:17091")
+
+    while run:
+        event = host.service(1000)
+        if event.type == enet.EVENT_TYPE_CONNECT:
+            print(f"{event.peer.address}: CONNECT")
+            connect_count += 1
+
+        elif event.type == enet.EVENT_TYPE_DISCONNECT:
+            print(f"{event.peer.address}: DISCONNECT")
+            connect_count -= 1
+            if connect_count <= 0 and shutdown_received:
+                run = False
+
+        elif event.type == enet.EVENT_TYPE_RECEIVE:
+            data = event.packet.data
+            print(f"{event.peer.address}: IN: {data!r}")
+
+            if event.peer.send(0, enet.Packet(data)) < 0:
+                print(f"{event.peer.address}: Error sending echo packet!")
+            else:
+                print(f"{event.peer.address}: OUT: {data!r}")
+
+            if data == SHUTDOWN_MSG:
+                shutdown_received = True
 
 
-def receive_callback(address, data):
-    if data and data == b"\xff\xff\xff\xffgetstatus\x00":
-        host.socket.send(address, b"\xff\xff\xff\xffstatusResponse\n")
-
-
-host.intercept = receive_callback
-
-while run:
-    # Wait 1 second for an event
-    event = host.service(1000)
-    if event.type == enet.EVENT_TYPE_CONNECT:
-        print("%s: CONNECT" % event.peer.address)
-        connect_count += 1
-    elif event.type == enet.EVENT_TYPE_DISCONNECT:
-        print("%s: DISCONNECT" % event.peer.address)
-        connect_count -= 1
-        if connect_count <= 0 and shutdown_recv:
-            run = False
-    elif event.type == enet.EVENT_TYPE_RECEIVE:
-        print("%s: IN:  %r" % (event.peer.address, event.packet.data))
-
-        # This packet echo is used to mimick the usual use case when packets are going back&forth while the intercept callback is used
-        msg = event.packet.data
-        if event.peer.send(0, enet.Packet(msg)) < 0:
-            print("%s: Error sending echo packet!" % event.peer.address)
-        else:
-            print("%s: OUT: %r" % (event.peer.address, msg))
-        if event.packet.data == b"SHUTDOWN":
-            shutdown_recv = True
+if __name__ == "__main__":
+    main()
