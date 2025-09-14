@@ -6,6 +6,9 @@ pyenet is a python wrapper for the ENet library by Lee Salzman,
 It was originally written by Scott Robinson <scott@tranzoa.com> and is
 currently maintained by Andrew Resch <andrewresch@gmail.com>
 
+This fork has been modified to support the networking protocol used by **Growtopia**, 
+and also includes updates from the latest ENet releases by Andre Watan <info@andrewatan.com>
+
 ## License
 pyenet is licensed under the BSD license, see LICENSE for details.
 enet is licensed under the MIT license, see http://enet.bespin.org/License.html
@@ -17,11 +20,7 @@ obviously, Python.
 
 ## Installation
 
-The first step is to download the enet sources from http://enet.bespin.org and
-extract it to the enet/ directory in pyenet's source directory.  You could also
-check out the enet source code from their CVS repository.
-
-This version of pyenet requires enet 1.3.
+This version of pyenet requires ENet v1.3.18
 
 Next step is to run the setup.py build:
 ```
